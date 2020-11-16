@@ -5,7 +5,9 @@
   "main": "index.js",
   "bin": "./run",
   "dependencies": {
+    "@ethersproject/asm": "^5.0.6",
     "@solidity-parser/parser": "^0.8.2",
+    "ethers": "^5.0.19",
     "js-sha3": "^0.8.0"
   },
   "devDependencies": {},
