@@ -10,7 +10,7 @@
   "author": "merkleX",
   "private": false,
   "dependencies": {
-    "js-sha3": "^0.8.0",
-    "@solidity-parser/parser": "^0.3.2"
+    "@solidity-parser/parser": "^0.8.2",
+    "js-sha3": "^0.8.0"
   }
 }
