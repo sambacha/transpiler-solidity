@@ -1,6 +1,6 @@
 const fs = require('fs');
 const GCCProcessor = require('./gcc_processor');
-const Parser = require('solidity-parser-antlr');
+const Parser = require('@solidity-parser/parser');
 const keccak256 = require('js-sha3').keccak256;
 
 module.exports = function(file_name, raw) {
