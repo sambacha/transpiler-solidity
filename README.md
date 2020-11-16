@@ -1,10 +1,12 @@
 # `transpiler-solidity`
 
+![NodeJs](https://github.com/sambacha/transpiler-solidity/workflows/NodeJs/badge.svg)
+
 A transpiler to Solidity that adds GCC macros and helper functions.
 
 **Why does this exist?**
 
-Solidity codes runs on the [Etheruem Virtual Machine](http://ethdocs.org/en/latest/introduction/what-is-ethereum.html), an environment where every operation has [a fixed cost](https://docs.google.com/spreadsheets/d/1n6mRqkBz3iWcOlRem_mO09GtSKEKrAsfO7Frgx18pNU/edit#gid=0). To keep processing costs low, it often makes sense to use [Solidity Assembly](https://solidity.readthedocs.io/en/v0.5.7/assembly.html) to manually optimize storage (memory) operations. This transpiler provides tooling and language features to make Solidity Assembly more managable.  
+Solidity codes runs on the [Etheruem Virtual Machine](http://ethdocs.org/en/latest/introduction/what-is-ethereum.html), an environment where every operation has [a fixed cost](https://docs.google.com/spreadsheets/d/1n6mRqkBz3iWcOlRem_mO09GtSKEKrAsfO7Frgx18pNU/edit#gid=0). To keep processing costs low, it often makes sense to use [Solidity Assembly](https://solidity.readthedocs.io/en/v0.5.7/assembly.html) to manually optimize storage (memory) operations. This transpiler provides tooling and language features to make Solidity Assembly more managable.
 
 **_Runtime Requirements_**
 
@@ -350,12 +352,11 @@ contract Ex {
   }
 }
 ```
-## Acknowledgements 
+
+## Acknowledgements
 
 SEE LICENSE
 
-## License 
+## License
 
 SPDX-License-Identifier: MIT
-
-
