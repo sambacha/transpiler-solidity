@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 const fs = require('fs');
 const GCCProcessor = require('./gcc_processor');
 const Parser = require('@solidity-parser/parser');

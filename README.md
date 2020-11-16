@@ -1,26 +1,27 @@
-# tSol
+# `transpiler-solidity`
 
-A transpiler to Solidity that adds GCC macros and helper functions. 
+A transpiler to Solidity that adds GCC macros and helper functions.
 
 **Why does this exist?**
 
 Solidity codes runs on the [Etheruem Virtual Machine](http://ethdocs.org/en/latest/introduction/what-is-ethereum.html), an environment where every operation has [a fixed cost](https://docs.google.com/spreadsheets/d/1n6mRqkBz3iWcOlRem_mO09GtSKEKrAsfO7Frgx18pNU/edit#gid=0). To keep processing costs low, it often makes sense to use [Solidity Assembly](https://solidity.readthedocs.io/en/v0.5.7/assembly.html) to manually optimize storage (memory) operations. This transpiler provides tooling and language features to make Solidity Assembly more managable. This tool was build to assist in the developement Decentralized Clearing Network by [merkleX](https://merklex.io).
 
-***Runtime Requirements***
 
- - gcc
- - npm & node
+**_Runtime Requirements_**
 
-***Usage***
+- gcc
+- npm & node
+
+**_Usage_**
 
 ```
-npm i -g tsol
-tsol file.sol > output.sol
+npm i -g transpiler-solidity
+transpiler-solidity file.sol > output.sol
 ```
 
 ## Added Assembly Functions
 
-### pointer(type, array\_start\_pointer, index)
+### pointer(type, array_start_pointer, index)
 
 Gives the storage address for an item in an array.
 
@@ -45,7 +46,7 @@ contract Ex {
 }
 ```
 
-### pointer\_attr(type, object\_pointer, attribute\_name)
+### pointer_attr(type, object_pointer, attribute_name)
 
 Gives the storage address for an object's attribute.
 
@@ -80,7 +81,7 @@ contract Ex {
 }
 ```
 
-### byte\_offset(type, attribute\_name)
+### byte_offset(type, attribute_name)
 
 Byte offset of a attribute inside of a type.
 
@@ -113,9 +114,9 @@ contract Ex {
 }
 ```
 
-### build(type, word, attributes...) | build\_with\_mask(type, word, attributes...)
+### build(type, word, attributes...) | build_with_mask(type, word, attributes...)
 
-Packs the data of an object. build\_with\_mask will mask each attribute to ensure attributes are not corrupted if the attribute is larger than allowed size.
+Packs the data of an object. build_with_mask will mask each attribute to ensure attributes are not corrupted if the attribute is larger than allowed size.
 
 ```c
 pragma solidity 0.5.7;
@@ -165,7 +166,7 @@ contract Ex {
 }
 ```
 
-### attr(type, word, object_data, attribute\_name)
+### attr(type, word, object_data, attribute_name)
 
 Extracts an attribute from an object.
 
@@ -200,7 +201,7 @@ contract Ex {
 }
 ```
 
-### fn\_hash(fn\_signature)
+### fn_hash(fn_signature)
 
 Hashes a function signture for Solidity's calling semantics.
 
@@ -220,7 +221,7 @@ contract Ex {
 }
 ```
 
-### log\_event(event\_type, memory\_pointer, arguments...)
+### log_event(event_type, memory_pointer, arguments...)
 
 Logs an event
 
@@ -247,7 +248,7 @@ contract Ex {
 }
 ```
 
-### mask\_out(type, word, attributes...)
+### mask_out(type, word, attributes...)
 
 Mask out the data occupied by a set of attributes. Often used to update a single attribute in an object.
 
@@ -328,7 +329,7 @@ contract Ex {
 }
 ```
 
-### const\_add(items...) | const\_sub(a, b)
+### const_add(items...) | const_sub(a, b)
 
 Adds or substracts constant numbers
 
@@ -350,3 +351,12 @@ contract Ex {
   }
 }
 ```
+## Acknowledgements 
+
+SEE LICENSE
+
+## License 
+
+SPDX-License-Identifier: MIT
+
+
