@@ -1,15 +1,15 @@
 //SPDX-License-Identifier: MIT
 const fs = require('fs');
 const GCCProcessor = require('./gcc_processor');
-const Parser = require('@solidity-parser/parser');
+const parser = require('@solidity-parser/parser');
 const keccak256 = require('js-sha3').keccak256;
 
-module.exports = function(file_name, raw) {
+module.exports = function (file_name, raw) {
   if (raw.indexOf('#define TRANSPILE') === -1) {
     return Promise.resolve(raw);
   }
 
-  return GCCProcessor(file_name).then(source => {
+  return GCCProcessor(file_name).then((source) => {
     const source_first_line = raw.substr(0, raw.indexOf('\n') + 1);
 
     source = source.replace(/hex"\s+(\w+)\s*";/g, 'hex"$1";');
@@ -17,13 +17,13 @@ module.exports = function(file_name, raw) {
     let ast;
     try {
       ast = Parser.parse(source, { loc: true, range: true });
-    } catch(e) {
+    } catch (e) {
       const lines = source.split('\n');
 
-      console.log(e)
+      console.log(e);
 
       if (e.errors) {
-        e.errors.forEach(error => {
+        e.errors.forEach((error) => {
           console.log(error);
           console.log('line: ', lines[error.line - 1]);
         });
@@ -75,11 +75,14 @@ module.exports = function(file_name, raw) {
     }
 
     function print(node, tab) {
-      const raw_input = source.substr(node.range[0], node.range[1] - node.range[0] + 1);
+      const raw_input = source.substr(
+        node.range[0],
+        node.range[1] - node.range[0] + 1
+      );
       tab = tab || '';
 
       if (node.type === 'SourceUnit') {
-        return node.children.map(node => print(node, tab)).join('\n' + tab);
+        return node.children.map((node) => print(node, tab)).join('\n' + tab);
       }
 
       if (node.type === 'PragmaDirective') {
@@ -95,11 +98,16 @@ module.exports = function(file_name, raw) {
           is = 'is ' + node.baseContracts[0].baseName.namePath + ' ';
         }
 
-        return `contract ${node.name} ${is}{${pre}${ node.subNodes.map(node => print(node, tab + TAB)).join(pre) }\n${tab}}`;
+        return `contract ${node.name} ${is}{${pre}${node.subNodes
+          .map((node) => print(node, tab + TAB))
+          .join(pre)}\n${tab}}`;
       }
 
       if (node.type === 'WhileStatement') {
-        return `while (${print(node.condition)})\n${tab}${print(node.body, tab + TAB)}`;
+        return `while (${print(node.condition)})\n${tab}${print(
+          node.body,
+          tab + TAB
+        )}`;
       }
 
       if (node.type === 'BooleanLiteral') {
@@ -107,47 +115,47 @@ module.exports = function(file_name, raw) {
       }
 
       if (node.type === 'StructDefinition') {
-        const struct = []
+        const struct = [];
         const pre = `\n${tab}${TAB}`;
-        const data = `struct ${node.name} {${pre}${node.members.map(mem => {
-          if (mem.typeName.type === 'ArrayTypeName') {
-            const array_length = mem.typeName.length;
+        const data = `struct ${node.name} {${pre}${node.members
+          .map((mem) => {
+            if (mem.typeName.type === 'ArrayTypeName') {
+              const array_length = mem.typeName.length;
 
-            const type = mem.typeName.baseTypeName.name || mem.typeName.baseTypeName.namePath;
-            let length;
+              const type =
+                mem.typeName.baseTypeName.name ||
+                mem.typeName.baseTypeName.namePath;
+              let length;
 
-            const { components } = array_length;
-            if (components) {
-              if (components.length > 1) {
-                throw new Error('Only supports one dimentional arrays');
+              const { components } = array_length;
+              if (components) {
+                if (components.length > 1) {
+                  throw new Error('Only supports one dimentional arrays');
+                }
+
+                if (!type) {
+                  throw new Error('type missing');
+                }
+
+                length = evaluate(components[0]);
+              } else if (array_length.type === 'NumberLiteral') {
+                length = BigInt(array_length.number);
+              } else {
+                throw new Error('Unable to parse array length');
               }
 
+              struct.push({ name: mem.name, type, length });
+              return `${type}[${length}] ${mem.name};`;
+            } else {
+              const type = mem.typeName.name || mem.typeName.namePath;
               if (!type) {
                 throw new Error('type missing');
               }
-
-              length = evaluate(components[0]);
+              struct.push({ name: mem.name, type });
+              return `${mem.typeName.name} ${mem.name};`;
             }
-            else if (array_length.type === 'NumberLiteral') {
-              length = BigInt(array_length.number);
-            }
-            else {
-              throw new Error('Unable to parse array length');
-            }
-
-
-            struct.push({ name: mem.name, type, length });
-            return `${type}[${length}] ${mem.name};`;
-          }
-          else {
-            const type = mem.typeName.name || mem.typeName.namePath;
-            if (!type) {
-              throw new Error('type missing');
-            }
-            struct.push({ name: mem.name, type });
-            return `${mem.typeName.name} ${mem.name};`;
-          }
-        }).join(pre)}\n${tab}}`;
+          })
+          .join(pre)}\n${tab}}`;
 
         const reducer = (value, item) => {
           return value + typeSize(item.type) * (item.length || 1n);
@@ -163,13 +171,14 @@ module.exports = function(file_name, raw) {
 
       if (node.type === 'EventDefinition') {
         const name = node.name;
-        const params = node.parameters.parameters.map(param => {
+        const params = node.parameters.parameters.map((param) => {
           const type = param.typeName.name;
           const { name, isIndexed } = param;
           return { type, name, isIndexed };
         });
 
-        const hash_hex = '0x' + keccak256(`${name}(${params.map(p => p.type).join(',')})`);
+        const hash_hex =
+          '0x' + keccak256(`${name}(${params.map((p) => p.type).join(',')})`);
 
         events[name] = {
           name,
@@ -180,13 +189,15 @@ module.exports = function(file_name, raw) {
         return raw_input;
       }
 
-      if (node.type === 'StateVariableDeclaration'
-        || node.type === 'ElementaryTypeName'
-        || node.type === 'Identifier'
-        || node.type === 'NumberLiteral'
-        || node.type === 'ExpressionStatement'
-        || node.type === 'ReturnStatement'
-        || node.type === 'StructDefinition') {
+      if (
+        node.type === 'StateVariableDeclaration' ||
+        node.type === 'ElementaryTypeName' ||
+        node.type === 'Identifier' ||
+        node.type === 'NumberLiteral' ||
+        node.type === 'ExpressionStatement' ||
+        node.type === 'ReturnStatement' ||
+        node.type === 'StructDefinition'
+      ) {
         return raw_input;
       }
 
@@ -200,7 +211,9 @@ module.exports = function(file_name, raw) {
           return raw_input;
         }
 
-        return `\n${tab}${print(v.typeName.baseTypeName)}[${print(v.typeName.length)}] ${v.storageLocation} ${v.name};`;
+        return `\n${tab}${print(v.typeName.baseTypeName)}[${print(
+          v.typeName.length
+        )}] ${v.storageLocation} ${v.name};`;
       }
 
       if (node.type === 'FunctionCall') {
@@ -217,14 +230,31 @@ module.exports = function(file_name, raw) {
       if (node.type === 'FunctionDefinition') {
         const body = print(node.body, tab);
 
-        const name = node.isConstructor ? (node.name || 'constructor') : 'function ' + node.name;
-        const params = source.substr(node.parameters.range[0], node.parameters.range[1]-node.parameters.range[0]+1);
-        const modifiers = node.visibility + (node.stateMutability ? ' ' + node.stateMutability : '');
+        const name = node.isConstructor
+          ? node.name || 'constructor'
+          : 'function ' + node.name;
+        const params = source.substr(
+          node.parameters.range[0],
+          node.parameters.range[1] - node.parameters.range[0] + 1
+        );
+        const modifiers =
+          node.visibility +
+          (node.stateMutability ? ' ' + node.stateMutability : '');
         const returnValues = node.returnParameters
-          ? '\n' + tab + source.substr(node.returnParameters.range[0], node.returnParameters.range[1]-node.returnParameters.range[0]+1)
+          ? '\n' +
+            tab +
+            source.substr(
+              node.returnParameters.range[0],
+              node.returnParameters.range[1] -
+                node.returnParameters.range[0] +
+                1
+            )
           : '';
 
-        return `\n${tab}${name}${params} ${modifiers} ${returnValues} ${print(node.body, tab)}`
+        return `\n${tab}${name}${params} ${modifiers} ${returnValues} ${print(
+          node.body,
+          tab
+        )}`;
       }
 
       if (node.type === 'Block' || node.type === 'AssemblyBlock') {
@@ -233,7 +263,9 @@ module.exports = function(file_name, raw) {
         if (items.length === 0) {
           return '{}';
         }
-        return `{${pre}${items.map(node => print(node, tab + TAB)).join(pre)}\n${tab}}`;
+        return `{${pre}${items
+          .map((node) => print(node, tab + TAB))
+          .join(pre)}\n${tab}}`;
       }
 
       if (node.type === 'InlineAssemblyStatement') {
@@ -250,7 +282,9 @@ module.exports = function(file_name, raw) {
         }
 
         if (node.functionName === 'pointer') {
-          const [ struct_type, offset, index, ...other ] = node.arguments.map(print);
+          const [struct_type, offset, index, ...other] = node.arguments.map(
+            print
+          );
           const bytes = typeSize(struct_type);
           const words = bytes / 32n;
 
@@ -270,7 +304,7 @@ module.exports = function(file_name, raw) {
         }
 
         if (node.functionName === 'pointer_attr') {
-          const [ struct_type, pointer, attr_name ] = node.arguments.map(print);
+          const [struct_type, pointer, attr_name] = node.arguments.map(print);
 
           const struct = structs[struct_type];
           if (!struct) {
@@ -293,10 +327,12 @@ module.exports = function(file_name, raw) {
           }
 
           if (!found) {
-            throw new Error('failed to find ' + attr_name + ' in ' + struct_type);
+            throw new Error(
+              'failed to find ' + attr_name + ' in ' + struct_type
+            );
           }
 
-          if ((total_size % 32n) !== 0n) {
+          if (total_size % 32n !== 0n) {
             throw new Error('not on a word multiple');
           }
 
@@ -304,7 +340,7 @@ module.exports = function(file_name, raw) {
         }
 
         if (node.functionName === 'byte_offset') {
-          const [ struct_type, attr_name ] = node.arguments.map(print);
+          const [struct_type, attr_name] = node.arguments.map(print);
 
           const struct = structs[struct_type];
           if (!struct) {
@@ -327,13 +363,18 @@ module.exports = function(file_name, raw) {
           }
 
           if (!found) {
-            throw new Error('failed to find ' + attr_name + ' in ' + struct_type);
+            throw new Error(
+              'failed to find ' + attr_name + ' in ' + struct_type
+            );
           }
 
           return total_size;
         }
 
-        if (node.functionName === 'build' || node.functionName === 'build_with_mask') {
+        if (
+          node.functionName === 'build' ||
+          node.functionName === 'build_with_mask'
+        ) {
           const mask = node.functionName === 'build_with_mask';
           const args = node.arguments.map(print);
 
@@ -366,13 +407,19 @@ module.exports = function(file_name, raw) {
           let arg_index = 2;
 
           let bits_remaining = 256n;
-          for (; i < struct.members.length && arg_index < args.length; ++i, ++arg_index) {
-            const member = struct.members[i]
-            const bits = (typeSize(member.type) * (member.length || 1n)) * 8n;
+          for (
+            ;
+            i < struct.members.length && arg_index < args.length;
+            ++i, ++arg_index
+          ) {
+            const member = struct.members[i];
+            const bits = typeSize(member.type) * (member.length || 1n) * 8n;
             bits_remaining = bits_remaining - bits;
 
             if (bits < 0) {
-              throw new Error('member ' + members.name + ' breaks word boundary');
+              throw new Error(
+                'member ' + members.name + ' breaks word boundary'
+              );
             }
 
             const arg = args[arg_index];
@@ -382,20 +429,25 @@ module.exports = function(file_name, raw) {
             }
 
             if (mask) {
-              const arg_mask = '0x' + ((1n<<bits) - 1n).toString(16);
+              const arg_mask = '0x' + ((1n << bits) - 1n).toString(16);
               if (bits_remaining === 0n) {
                 parts.push(`/* ${member.name} */ and(${arg}, ${arg_mask})`);
+              } else {
+                parts.push(
+                  `/* ${member.name} */ mul(and(${arg}, ${arg_mask}), 0x${(
+                    1n << bits_remaining
+                  ).toString(16)})`
+                );
               }
-              else {
-                parts.push(`/* ${member.name} */ mul(and(${arg}, ${arg_mask}), 0x${(1n<<bits_remaining).toString(16)})`);
-              }
-            }
-            else {
+            } else {
               if (bits_remaining === 0n) {
                 parts.push(`/* ${member.name} */ ${arg}`);
-              }
-              else {
-                parts.push(`/* ${member.name} */ mul(${arg}, 0x${(1n<<bits_remaining).toString(16)})`);
+              } else {
+                parts.push(
+                  `/* ${member.name} */ mul(${arg}, 0x${(
+                    1n << bits_remaining
+                  ).toString(16)})`
+                );
               }
             }
           }
@@ -412,7 +464,9 @@ module.exports = function(file_name, raw) {
         }
 
         if (node.functionName === 'attr') {
-          const [ struct_type, word, data, member_name ] = node.arguments.map(print);
+          const [struct_type, word, data, member_name] = node.arguments.map(
+            print
+          );
 
           const struct = structs[struct_type];
           if (!struct) {
@@ -438,15 +492,16 @@ module.exports = function(file_name, raw) {
             throw new Error('struct members to do lie on a word boundary');
           }
 
-
           let bits_remaining = 256n;
           for (; i < struct.members.length; ++i) {
-            const member = struct.members[i]
-            const bits = (typeSize(member.type) * (member.length || 1n)) * 8n;
+            const member = struct.members[i];
+            const bits = typeSize(member.type) * (member.length || 1n) * 8n;
             bits_remaining = bits_remaining - bits;
 
             if (bits < 0) {
-              throw new Error('member ' + members.name + ' breaks word boundary');
+              throw new Error(
+                'member ' + members.name + ' breaks word boundary'
+              );
             }
 
             if (member.name === member_name) {
@@ -454,7 +509,9 @@ module.exports = function(file_name, raw) {
 
               if (length === 32n) {
                 if (bits_remaining !== 0n) {
-                  throw new Error(`full width member "${member_name}" should span word, remain: ${bits_remaining}`);
+                  throw new Error(
+                    `full width member "${member_name}" should span word, remain: ${bits_remaining}`
+                  );
                 }
 
                 return data;
@@ -463,27 +520,42 @@ module.exports = function(file_name, raw) {
               const mask = '0x' + ((1n << (length * 8n)) - 1n).toString(16);
               if (bits_remaining === 0n) {
                 return `and(${data}, ${mask})`;
-              }
-              else {
-                return `and(div(${data}, 0x${(1n << bits_remaining).toString(16)}), ${mask})`;
+              } else {
+                return `and(div(${data}, 0x${(1n << bits_remaining).toString(
+                  16
+                )}), ${mask})`;
               }
             }
           }
 
-          throw new Error('could not find ' + member_name + ' in word ' + word + ' of ' + struct_type);
+          throw new Error(
+            'could not find ' +
+              member_name +
+              ' in word ' +
+              word +
+              ' of ' +
+              struct_type
+          );
         }
 
         if (node.functionName === 'fn_hash') {
-          if (node.arguments.length !== 1 || node.arguments[0].type !== 'StringLiteral') {
+          if (
+            node.arguments.length !== 1 ||
+            node.arguments[0].type !== 'StringLiteral'
+          ) {
             throw new Error('hash4 expects 1 string arguments');
           }
           const str = node.arguments[0].value;
-          const end = '00000000000000000000000000000000000000000000000000000000';
-          return `/* fn_hash("${str}") */ 0x${keccak256(str).substr(0, 8)}${end}`;
+          const end =
+            '00000000000000000000000000000000000000000000000000000000';
+          return `/* fn_hash("${str}") */ 0x${keccak256(str).substr(
+            0,
+            8
+          )}${end}`;
         }
 
         if (node.functionName === 'log_event') {
-          const [ name, memory, ...args ] = node.arguments.map(print);
+          const [name, memory, ...args] = node.arguments.map(print);
 
           const event = events[name];
           if (!event) {
@@ -491,10 +563,17 @@ module.exports = function(file_name, raw) {
           }
 
           if (event.parameters.length !== args.length) {
-            throw new Error('event ' + name + ' expected ' + event.parameters.length + ' parameters but got ' + args.length);
+            throw new Error(
+              'event ' +
+                name +
+                ' expected ' +
+                event.parameters.length +
+                ' parameters but got ' +
+                args.length
+            );
           }
 
-          const indexed = [ `/* ${name} */ ${event.hash_hex}` ];
+          const indexed = [`/* ${name} */ ${event.hash_hex}`];
           const parts = ['', `/* Log event: ${name} */`];
 
           let next_word_pos = 0;
@@ -510,11 +589,9 @@ module.exports = function(file_name, raw) {
               parts.push(`mstore(${ptr}, ${arg})`);
               next_word_pos += 1;
               in_index = false;
-            }
-            else if (!in_index) {
+            } else if (!in_index) {
               throw new Error('event args went from not indexed to indexed');
-            }
-            else {
+            } else {
               indexed.push(arg);
             }
           }
@@ -523,13 +600,17 @@ module.exports = function(file_name, raw) {
             throw new Error('max of 4 indexed parameters supported');
           }
 
-          parts.push(`log${indexed.length}(${memory}, ${next_word_pos * 32}, ${indexed.join(', ')})`);
+          parts.push(
+            `log${indexed.length}(${memory}, ${
+              next_word_pos * 32
+            }, ${indexed.join(', ')})`
+          );
 
           return parts.join('\n' + tab);
         }
 
         if (node.functionName === 'mask_out') {
-          const [ struct_name, word, ...args ] = node.arguments.map(print);
+          const [struct_name, word, ...args] = node.arguments.map(print);
 
           const struct = structs[struct_name];
           if (!struct) {
@@ -577,8 +658,7 @@ module.exports = function(file_name, raw) {
               }
               visited[name] = true;
               visited_count += 1;
-            }
-            else {
+            } else {
               continue;
             }
 
@@ -666,7 +746,12 @@ module.exports = function(file_name, raw) {
           }
         }
 
-        return node.functionName + '(' + node.arguments.map(arg => print(arg, tab)).join(', ') + ')';
+        return (
+          node.functionName +
+          '(' +
+          node.arguments.map((arg) => print(arg, tab)).join(', ') +
+          ')'
+        );
       }
 
       if (node.type === 'AssemblyLocalDefinition') {
@@ -686,25 +771,30 @@ module.exports = function(file_name, raw) {
       }
 
       if (node.type === 'AssemblyFor') {
-        return `for ${print(node.pre, tab)} ${print(node.condition)} ${print(node.post, tab)} ${print(node.body, tab)}`;
+        return `for ${print(node.pre, tab)} ${print(node.condition)} ${print(
+          node.post,
+          tab
+        )} ${print(node.body, tab)}`;
       }
 
       if (node.type === 'AssemblySwitch') {
-        return `switch ${print(node.expression)}\n${tab}${TAB}${node.cases.map(c => {
-          if (c.default) {
-            return `default ${print(c.block, tab + TAB)}`;
-          }
-          return `case ${print(c.value)} ${print(c.block, tab + TAB)}`;
-        }).join(`\n${tab}${TAB}`)}`;
+        return `switch ${print(node.expression)}\n${tab}${TAB}${node.cases
+          .map((c) => {
+            if (c.default) {
+              return `default ${print(c.block, tab + TAB)}`;
+            }
+            return `case ${print(c.value)} ${print(c.block, tab + TAB)}`;
+          })
+          .join(`\n${tab}${TAB}`)}`;
       }
 
       console.error('Error', node.type, node);
-      return '<error '+node.type+'>';
+      return '<error ' + node.type + '>';
     }
 
     const result = print(ast);
 
-    Object.keys(structs).forEach(struct => {
+    Object.keys(structs).forEach((struct) => {
       console.error('Struct size:', struct, typeSize(struct));
     });
 
