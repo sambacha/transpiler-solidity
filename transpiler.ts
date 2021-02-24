@@ -1,21 +1,23 @@
 //SPDX-License-Identifier: MIT
+// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'fs'.
 const fs = require('fs');
 const GCCProcessor = require('./gcc_processor');
 const parser = require('@solidity-parser/parser');
 const keccak256 = require('js-sha3').keccak256;
 
-module.exports = function (file_name, raw) {
+module.exports = function (file_name: any, raw: any) {
   if (raw.indexOf('#define TRANSPILE') === -1) {
     return Promise.resolve(raw);
   }
 
-  return GCCProcessor(file_name).then((source) => {
+  return GCCProcessor(file_name).then((source: any) => {
     const source_first_line = raw.substr(0, raw.indexOf('\n') + 1);
 
     source = source.replace(/hex"\s+(\w+)\s*";/g, 'hex"$1";');
 
     let ast;
     try {
+      // @ts-expect-error ts-migrate(2552) FIXME: Cannot find name 'Parser'. Did you mean 'parser'?
       ast = Parser.parse(source, { loc: true, range: true });
     } catch (e) {
       const lines = source.split('\n');
@@ -23,7 +25,7 @@ module.exports = function (file_name, raw) {
       console.log(e);
 
       if (e.errors) {
-        e.errors.forEach((error) => {
+        e.errors.forEach((error: any) => {
           console.log(error);
           console.log('line: ', lines[error.line - 1]);
         });
@@ -37,7 +39,8 @@ module.exports = function (file_name, raw) {
     const events = {};
     const TAB = '  ';
 
-    function evaluate(node) {
+    // @ts-expect-error ts-migrate(7023) FIXME: 'evaluate' implicitly has return type 'any' becaus... Remove this comment to see the full error message
+    function evaluate(node: any) {
       if (node.type === 'NumberLiteral') {
         return BigInt(node.number);
       }
@@ -51,30 +54,36 @@ module.exports = function (file_name, raw) {
       throw new Error('Not implemented ' + node.type);
     }
 
-    function typeSize(type) {
+    function typeSize(type: any) {
       if (!type) {
         throw new Error('invalid type');
       }
       if (type.startsWith('uint') || type.startsWith('int')) {
+        // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
         return BigInt(type.substr(type.indexOf('int') + 3)) / 8n;
       }
 
+      // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       if (structs[type]) {
+        // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         return structs[type].bytes;
       }
 
       if (type === 'u256') {
+        // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
         return 32n;
       }
 
       if (type === 'address') {
+        // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
         return 20n;
       }
 
       throw new Error('unknown type ' + type);
     }
 
-    function print(node, tab) {
+    // @ts-expect-error ts-migrate(7023) FIXME: 'print' implicitly has return type 'any' because i... Remove this comment to see the full error message
+    function print(node: any, tab: any) {
       const raw_input = source.substr(
         node.range[0],
         node.range[1] - node.range[0] + 1
@@ -82,7 +91,7 @@ module.exports = function (file_name, raw) {
       tab = tab || '';
 
       if (node.type === 'SourceUnit') {
-        return node.children.map((node) => print(node, tab)).join('\n' + tab);
+        return node.children.map((node: any) => print(node, tab)).join('\n' + tab);
       }
 
       if (node.type === 'PragmaDirective') {
@@ -99,11 +108,12 @@ module.exports = function (file_name, raw) {
         }
 
         return `contract ${node.name} ${is}{${pre}${node.subNodes
-          .map((node) => print(node, tab + TAB))
+          .map((node: any) => print(node, tab + TAB))
           .join(pre)}\n${tab}}`;
       }
 
       if (node.type === 'WhileStatement') {
+        // @ts-expect-error ts-migrate(2554) FIXME: Expected 2 arguments, but got 1.
         return `while (${print(node.condition)})\n${tab}${print(
           node.body,
           tab + TAB
@@ -115,10 +125,10 @@ module.exports = function (file_name, raw) {
       }
 
       if (node.type === 'StructDefinition') {
-        const struct = [];
+        const struct: any = [];
         const pre = `\n${tab}${TAB}`;
         const data = `struct ${node.name} {${pre}${node.members
-          .map((mem) => {
+          .map((mem: any) => {
             if (mem.typeName.type === 'ArrayTypeName') {
               const array_length = mem.typeName.length;
 
@@ -157,11 +167,14 @@ module.exports = function (file_name, raw) {
           })
           .join(pre)}\n${tab}}`;
 
-        const reducer = (value, item) => {
+        const reducer = (value: any, item: any) => {
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           return value + typeSize(item.type) * (item.length || 1n);
         };
 
+        // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         structs[node.name] = {
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           bytes: struct.reduce(reducer, 0n),
           members: struct,
         };
@@ -171,15 +184,16 @@ module.exports = function (file_name, raw) {
 
       if (node.type === 'EventDefinition') {
         const name = node.name;
-        const params = node.parameters.parameters.map((param) => {
+        const params = node.parameters.parameters.map((param: any) => {
           const type = param.typeName.name;
           const { name, isIndexed } = param;
           return { type, name, isIndexed };
         });
 
         const hash_hex =
-          '0x' + keccak256(`${name}(${params.map((p) => p.type).join(',')})`);
+          '0x' + keccak256(`${name}(${params.map((p: any) => p.type).join(',')})`);
 
+        // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         events[name] = {
           name,
           hash_hex,
@@ -211,6 +225,7 @@ module.exports = function (file_name, raw) {
           return raw_input;
         }
 
+        // @ts-expect-error ts-migrate(2554) FIXME: Expected 2 arguments, but got 1.
         return `\n${tab}${print(v.typeName.baseTypeName)}[${print(
           v.typeName.length
         )}] ${v.storageLocation} ${v.name};`;
@@ -222,6 +237,7 @@ module.exports = function (file_name, raw) {
             throw new Error('sizeof expects one argument');
           }
 
+          // @ts-expect-error ts-migrate(7022) FIXME: 'arg' implicitly has type 'any' because it does no... Remove this comment to see the full error message
           const arg = print(node.arguments[0], tab);
           return typeSize(arg);
         }
@@ -264,7 +280,7 @@ module.exports = function (file_name, raw) {
           return '{}';
         }
         return `{${pre}${items
-          .map((node) => print(node, tab + TAB))
+          .map((node: any) => print(node, tab + TAB))
           .join(pre)}\n${tab}}`;
       }
 
@@ -286,16 +302,19 @@ module.exports = function (file_name, raw) {
             print
           );
           const bytes = typeSize(struct_type);
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           const words = bytes / 32n;
 
           if (other.length > 0) {
             throw new Error('Too many arguments: ' + raw_input);
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           if (bytes % 32n !== 0n) {
             throw new Error('Type must be word mulitple');
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           if (words === 1n) {
             return `add(${offset}, ${index})`;
           }
@@ -306,11 +325,13 @@ module.exports = function (file_name, raw) {
         if (node.functionName === 'pointer_attr') {
           const [struct_type, pointer, attr_name] = node.arguments.map(print);
 
+          // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           const struct = structs[struct_type];
           if (!struct) {
             throw new Error('Cannot build struct for ' + struct_type);
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let total_size = 0n;
           let found = false;
 
@@ -323,6 +344,7 @@ module.exports = function (file_name, raw) {
               break;
             }
 
+            // @ts-expect-error ts-migrate(2365) FIXME: Operator '+=' cannot be applied to types 'bigint' ... Remove this comment to see the full error message
             total_size += typeSize(member.type) * (member.length || 1n);
           }
 
@@ -332,21 +354,25 @@ module.exports = function (file_name, raw) {
             );
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           if (total_size % 32n !== 0n) {
             throw new Error('not on a word multiple');
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           return `add(${pointer}, ${total_size / 32n})`;
         }
 
         if (node.functionName === 'byte_offset') {
           const [struct_type, attr_name] = node.arguments.map(print);
 
+          // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           const struct = structs[struct_type];
           if (!struct) {
             throw new Error('Cannot build struct for ' + struct_type);
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let total_size = 0n;
           let found = false;
 
@@ -359,6 +385,7 @@ module.exports = function (file_name, raw) {
               break;
             }
 
+            // @ts-expect-error ts-migrate(2365) FIXME: Operator '+=' cannot be applied to types 'bigint' ... Remove this comment to see the full error message
             total_size += typeSize(member.type) * (member.length || 1n);
           }
 
@@ -379,13 +406,16 @@ module.exports = function (file_name, raw) {
           const args = node.arguments.map(print);
 
           const struct_type = args[0];
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           const word_bytes = BigInt(args[1]) * 32n;
 
+          // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           const struct = structs[struct_type];
           if (!struct) {
             throw new Error('Cannot build struct for ' + struct_type);
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let total_size = 0n;
 
           let i;
@@ -396,6 +426,7 @@ module.exports = function (file_name, raw) {
               break;
             }
 
+            // @ts-expect-error ts-migrate(2365) FIXME: Operator '+=' cannot be applied to types 'bigint' ... Remove this comment to see the full error message
             total_size += typeSize(member.type) * (member.length || 1n);
           }
 
@@ -406,6 +437,7 @@ module.exports = function (file_name, raw) {
           const parts = [];
           let arg_index = 2;
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let bits_remaining = 256n;
           for (
             ;
@@ -413,11 +445,13 @@ module.exports = function (file_name, raw) {
             ++i, ++arg_index
           ) {
             const member = struct.members[i];
+            // @ts-expect-error ts-migrate(2365) FIXME: Operator '*' cannot be applied to types 'number' a... Remove this comment to see the full error message
             const bits = typeSize(member.type) * (member.length || 1n) * 8n;
             bits_remaining = bits_remaining - bits;
 
             if (bits < 0) {
               throw new Error(
+                // @ts-expect-error ts-migrate(2552) FIXME: Cannot find name 'members'. Did you mean 'member'?
                 'member ' + members.name + ' breaks word boundary'
               );
             }
@@ -429,22 +463,27 @@ module.exports = function (file_name, raw) {
             }
 
             if (mask) {
+              // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
               const arg_mask = '0x' + ((1n << bits) - 1n).toString(16);
+              // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
               if (bits_remaining === 0n) {
                 parts.push(`/* ${member.name} */ and(${arg}, ${arg_mask})`);
               } else {
                 parts.push(
                   `/* ${member.name} */ mul(and(${arg}, ${arg_mask}), 0x${(
+                    // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
                     1n << bits_remaining
                   ).toString(16)})`
                 );
               }
             } else {
+              // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
               if (bits_remaining === 0n) {
                 parts.push(`/* ${member.name} */ ${arg}`);
               } else {
                 parts.push(
                   `/* ${member.name} */ mul(${arg}, 0x${(
+                    // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
                     1n << bits_remaining
                   ).toString(16)})`
                 );
@@ -452,6 +491,7 @@ module.exports = function (file_name, raw) {
             }
           }
 
+          // @ts-expect-error ts-migrate(2769) FIXME: No overload matches this call.
           return parts.reduce((current, part) => {
             const pre = '\n' + tab + TAB;
 
@@ -468,13 +508,16 @@ module.exports = function (file_name, raw) {
             print
           );
 
+          // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           const struct = structs[struct_type];
           if (!struct) {
             throw new Error('Cannot find struct ' + struct_type);
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           const word_bytes = BigInt(word) * 32n;
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let total_size = 0n;
 
           let i;
@@ -485,6 +528,7 @@ module.exports = function (file_name, raw) {
               break;
             }
 
+            // @ts-expect-error ts-migrate(2365) FIXME: Operator '+=' cannot be applied to types 'bigint' ... Remove this comment to see the full error message
             total_size += typeSize(member.type) * (member.length || 1n);
           }
 
@@ -492,14 +536,17 @@ module.exports = function (file_name, raw) {
             throw new Error('struct members to do lie on a word boundary');
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let bits_remaining = 256n;
           for (; i < struct.members.length; ++i) {
             const member = struct.members[i];
+            // @ts-expect-error ts-migrate(2365) FIXME: Operator '*' cannot be applied to types 'number' a... Remove this comment to see the full error message
             const bits = typeSize(member.type) * (member.length || 1n) * 8n;
             bits_remaining = bits_remaining - bits;
 
             if (bits < 0) {
               throw new Error(
+                // @ts-expect-error ts-migrate(2552) FIXME: Cannot find name 'members'. Did you mean 'member'?
                 'member ' + members.name + ' breaks word boundary'
               );
             }
@@ -507,7 +554,9 @@ module.exports = function (file_name, raw) {
             if (member.name === member_name) {
               const length = typeSize(member.type);
 
+              // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
               if (length === 32n) {
+                // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
                 if (bits_remaining !== 0n) {
                   throw new Error(
                     `full width member "${member_name}" should span word, remain: ${bits_remaining}`
@@ -517,10 +566,13 @@ module.exports = function (file_name, raw) {
                 return data;
               }
 
+              // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
               const mask = '0x' + ((1n << (length * 8n)) - 1n).toString(16);
+              // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
               if (bits_remaining === 0n) {
                 return `and(${data}, ${mask})`;
               } else {
+                // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
                 return `and(div(${data}, 0x${(1n << bits_remaining).toString(
                   16
                 )}), ${mask})`;
@@ -557,6 +609,7 @@ module.exports = function (file_name, raw) {
         if (node.functionName === 'log_event') {
           const [name, memory, ...args] = node.arguments.map(print);
 
+          // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           const event = events[name];
           if (!event) {
             throw new Error('fould not find event ' + name);
@@ -584,7 +637,9 @@ module.exports = function (file_name, raw) {
             const arg = args[i];
 
             if (!param.isIndexed) {
+              // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
               const offset = BigInt(next_word_pos) * 32n;
+              // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
               const ptr = offset === 0n ? memory : `add(${memory}, ${offset})`;
               parts.push(`mstore(${ptr}, ${arg})`);
               next_word_pos += 1;
@@ -612,12 +667,15 @@ module.exports = function (file_name, raw) {
         if (node.functionName === 'mask_out') {
           const [struct_name, word, ...args] = node.arguments.map(print);
 
+          // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           const struct = structs[struct_name];
           if (!struct) {
             throw new Error('Could not find struct ' + struct_name);
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           const word_bytes = BigInt(word) * 32n;
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let total_size = 0n;
 
           let i;
@@ -628,6 +686,7 @@ module.exports = function (file_name, raw) {
               break;
             }
 
+            // @ts-expect-error ts-migrate(2365) FIXME: Operator '+=' cannot be applied to types 'bigint' ... Remove this comment to see the full error message
             total_size += typeSize(member.type) * (member.length || 1n);
           }
 
@@ -635,15 +694,18 @@ module.exports = function (file_name, raw) {
             throw new Error('struct members to do lie on a word boundary');
           }
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let mask = (1n << 256n) - 1n;
 
           const visited = {};
           let visited_count = 0;
 
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           let bits_remaining = 256n;
           for (; i < struct.members.length; ++i) {
             const member = struct.members[i];
 
+            // @ts-expect-error ts-migrate(2365) FIXME: Operator '*' cannot be applied to types 'number' a... Remove this comment to see the full error message
             const bits = typeSize(member.type) * (member.length || 1n) * 8n;
             bits_remaining -= bits;
 
@@ -653,15 +715,18 @@ module.exports = function (file_name, raw) {
 
             const name = member.name;
             if (args.indexOf(name) !== -1) {
+              // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
               if (visited[name]) {
                 continue;
               }
+              // @ts-expect-error ts-migrate(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
               visited[name] = true;
               visited_count += 1;
             } else {
               continue;
             }
 
+            // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
             const member_mask = ((1n << bits) - 1n) << bits_remaining;
             mask = mask ^ member_mask;
           }
@@ -678,6 +743,7 @@ module.exports = function (file_name, raw) {
             throw new Error('sizeof expects one argument');
           }
 
+          // @ts-expect-error ts-migrate(7022) FIXME: 'arg' implicitly has type 'any' because it does no... Remove this comment to see the full error message
           const arg = print(node.arguments[0], tab);
           return typeSize(arg);
         }
@@ -685,8 +751,9 @@ module.exports = function (file_name, raw) {
         if (node.functionName === 'const_add') {
           const args = node.arguments.map(print);
 
-          return args.reduce((total, item) => {
+          return args.reduce((total: any, item: any) => {
             return total + BigInt(item);
+          // @ts-expect-error ts-migrate(2737) FIXME: BigInt literals are not available when targeting l... Remove this comment to see the full error message
           }, 0n);
         }
 
@@ -717,10 +784,12 @@ module.exports = function (file_name, raw) {
           const a = BigInt(args[0]);
           const b = BigInt(args[1]);
 
+          // @ts-expect-error ts-migrate(2367) FIXME: This condition will always return 'false' since th... Remove this comment to see the full error message
           if (b == 0) {
             return BigInt(1);
           }
 
+          // @ts-expect-error ts-migrate(2791) FIXME: Exponentiation cannot be performed on 'bigint' val... Remove this comment to see the full error message
           return a ** b;
         }
 
@@ -746,12 +815,10 @@ module.exports = function (file_name, raw) {
           }
         }
 
-        return (
-          node.functionName +
-          '(' +
-          node.arguments.map((arg) => print(arg, tab)).join(', ') +
-          ')'
-        );
+        return node.functionName +
+        '(' +
+        node.arguments.map((arg: any) => print(arg, tab)).join(', ') +
+        ')';
       }
 
       if (node.type === 'AssemblyLocalDefinition') {
@@ -767,10 +834,12 @@ module.exports = function (file_name, raw) {
       }
 
       if (node.type === 'AssemblyIf') {
+        // @ts-expect-error ts-migrate(2554) FIXME: Expected 2 arguments, but got 1.
         return `if ${print(node.condition)} ${print(node.body, tab)}`;
       }
 
       if (node.type === 'AssemblyFor') {
+        // @ts-expect-error ts-migrate(2554) FIXME: Expected 2 arguments, but got 1.
         return `for ${print(node.pre, tab)} ${print(node.condition)} ${print(
           node.post,
           tab
@@ -778,11 +847,13 @@ module.exports = function (file_name, raw) {
       }
 
       if (node.type === 'AssemblySwitch') {
+        // @ts-expect-error ts-migrate(2554) FIXME: Expected 2 arguments, but got 1.
         return `switch ${print(node.expression)}\n${tab}${TAB}${node.cases
-          .map((c) => {
+          .map((c: any) => {
             if (c.default) {
               return `default ${print(c.block, tab + TAB)}`;
             }
+            // @ts-expect-error ts-migrate(2554) FIXME: Expected 2 arguments, but got 1.
             return `case ${print(c.value)} ${print(c.block, tab + TAB)}`;
           })
           .join(`\n${tab}${TAB}`)}`;
@@ -792,6 +863,7 @@ module.exports = function (file_name, raw) {
       return '<error ' + node.type + '>';
     }
 
+    // @ts-expect-error ts-migrate(2554) FIXME: Expected 2 arguments, but got 1.
     const result = print(ast);
 
     Object.keys(structs).forEach((struct) => {
