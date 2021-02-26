@@ -1,4 +1,5 @@
-
+// @file opcodes
+// @source ethers-js
 export declare enum OpcodeMemoryAccess {
     write = "write",
     read = "read",
