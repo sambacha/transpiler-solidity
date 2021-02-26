@@ -1,16 +1,21 @@
 {
   "name": "transpiler-solidity",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "transpiler for solidity assmbly.",
   "main": "index.js",
-  "bin": "./run",
+  "bin": {
+    "run": "./run",
+    "transpiler-soliidty": "index.ts"
+  },
   "dependencies": {
     "@ethersproject/asm": "^5.0.6",
-    "@solidity-parser/parser": "^0.8.2",
     "ethers": "^5.0.19",
+    "@solidity-parser/parser": "^0.11.0",
     "js-sha3": "^0.8.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "ts-migrate": "^0.1.15"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
