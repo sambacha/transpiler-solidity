@@ -10,7 +10,7 @@
   "dependencies": {
     "@ethersproject/asm": "^5.0.6",
     "ethers": "^5.0.19",
-    "@solidity-parser/parser": "^0.11.0",
+    "@solidity-parser/parser": "^0.13.0",
     "js-sha3": "^0.8.0"
   },
   "devDependencies": {
